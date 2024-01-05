@@ -1,13 +1,18 @@
-require('dotenv').config()
-import express, { json, urlencoded} from 'express'
-import { get } from 'axios'
-import { join } from 'path'
-import logger from 'morgan'
-import exphbs from 'express-handlebars.d.ts'
+import dotenv from 'dotenv';
+dotenv.config();
+import express, { json, urlencoded} from 'express';
+import axios from 'axios';
+import { fileURLToPath } from 'url';
+import { join } from 'path';
+import logger from 'morgan';
+import exphbs from 'express-handlebars';
 
 // establishing the I/O port
-const PORT = process.env.PORT || 3000
+const __dirname = fileURLToPath(new URL('.', import.meta.url));
+
 const app = express()
+const PORT = process.env.PORT || 3000
+
 
 // view engine setup
 app.set('views', join(__dirname, 'views')) // specify that templates will live in the "views" directory
@@ -17,9 +22,7 @@ app.set('view engine', '.hbs') // specify that we are using "handlebars" as our 
 app.use(logger('dev'))
 app.use(json())
 app.use(urlencoded({ extended: false }))
-app.use((join(__dirname, 'public')))
-
-app.listen(PORT, () => console.log(`App is up and running listening on port ${PORT}`))
+app.use(express.static(join(__dirname, 'public'))); // Serve static files
 
 app.get('/', (req, res, next) => {
   // "render" the template named "home.hbs" in your views folder
@@ -48,69 +51,51 @@ app.get('/restaurants', async (req, res, next) => {
   res.json({restaurants})
 })
 
-function zomatoCuisines(cityId) {
+async function zomatoCuisines(cityId) {
   console.log("inside zomatoCuisines")
   const url = 'https://developers.zomato.com/api/v2.1/cuisines'
   //const apiKey = '[ADD YOUR GIPHY API KEY HERE]'
   const apiKey = 'a1c6a3aa1b88fda14fbd7bf434a9e7a9'
 
   // don't forget the "return" keyword in front of axios
-  return get(url, {
-    params: {
-      city_id: cityId,
-    },
-    headers: {'user-key': `${apiKey}`}
-  }).then((response) => {
-    //console.log(response.data)
-    return response.data.cuisines
-  }).catch((error) => {
-    console.log(error)
-  })
+  try {
+    const response = await axios.get(url, {
+      params: {
+        city_id: cityId,
+      },
+      headers: { 'user-key': `${apiKey}` }
+    });
+    return response.data.cuisines;
+  } catch (error) {
+    console.log(error);
+  }
 }
 
 // https://developers.zomato.com/api/v2.1/search?entity_id=280&entity_type=city&count=5&cuisines=641&sort=rating&order=desc
-function zomatoRestaurants(cityId, cuisineId) {
+async function zomatoRestaurants(cityId, cuisineId) {
   console.log("inside zomatoRestaurants")
   const url = 'https://developers.zomato.com/api/v2.1/search'
   //const apiKey = '[ADD YOUR GIPHY API KEY HERE]'
   const apiKey = 'a1c6a3aa1b88fda14fbd7bf434a9e7a9'
 
   // don't forget the "return" keyword in front of axios
-  return get(url, {
-    params: {
-      entity_id: cityId,
-      entity_type: "city",
-      count: "5",
-      cuisines: cuisineId,
-      sort: "rating",
-      order: "desc"
-    },
-    headers: {'user-key': `${apiKey}`}
-  }).then((response) => {
-    console.log(response.data.restaurants)
-    return response.data.restaurants
-  }).catch((error) => {
-    console.log(error)
-  })
+  try {
+    const response = await axios.get(url, {
+      params: {
+        entity_id: cityId,
+        entity_type: "city",
+        count: "5",
+        cuisines: cuisineId,
+        sort: "rating",
+        order: "desc"
+      },
+      headers: { 'user-key': `${apiKey}` }
+    });
+    console.log(response.data.restaurants);
+    return response.data.restaurants;
+  } catch (error) {
+    console.log(error);
+  }
 }
 
-// function fetchCuisinesByCity (cityId) {
-//     console.log(cityId)
-//     const url = 'xhr.open("GET", "https://cors-escape.herokuapp.com/https://developers.zomato.com/documentation#!/common/cities'
-//     const apiKey = 'a1c6a3aa1b88fda14fbd7bf434a9e7a9'
-//
-//
-//     axios.get(url, {
-//       params: {
-//         city_id: cityId,
-//       },
-//       headers: {'user-key': `${apiKey}`}
-//     })
-//     .then((response)=>{
-//       console.log(response)
-//     })
-//     .catch((error)=>{
-//       console.log(error)
-//       alert('error occurred')
-//     })
-//   }
+app.listen(PORT, () => console.log(`App is up and running listening on port ${PORT}`))
