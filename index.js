@@ -95,13 +95,22 @@ async function worldWideRestaurantsCuisines(locationId) {
       }
     });
 
-    const restaurantData = response.data.results.data;
-    return restaurantData;
-    console.log(`${restaurantData}`);
-  } catch (error) {
-    console.error('Error in worldWideRestarantsCuisines:', error);
-    throw error;
-  }
+  const restaurants = response.data.results.data;
+
+  const cuisineData = restaurants.map(restaurant => ({
+    name: restaurant.name,
+    website: restaurant.website,
+    address: restaurant.address,
+    firstCuisine: restaurant.cuisine && restaurant.cuisine[0] ? restaurant.cuisine[0].name : 'Not specified'
+
+  }));
+
+  return cuisineData;
+} catch (error) {
+  console.error('Error in worldWideRestaurantsCuisines:', error);
+  throw error;
+}
+
 }
 
 
