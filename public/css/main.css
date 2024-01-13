@@ -118,26 +118,26 @@ input.form-control{
 }
 
 button.btn {
-    width: 200px;
-    position: relative;
+    width: 15%;
+    /* position: relative;
     top: -38px;
-    right: -50px;
+    right: -50px; */
 }
 
 button.btn #dropdownMenu2 {
     position: relative;
-    top: -5px;
+    /* top: -5px; */
 	  font-size: 16px;
     background-color: rgba(255,255,255,.3);
-    height: 33.5px;
-    width: 125px;
+    /* height: 33.5px;
+    width: 125px; */
 }
 
 button#dropdownMenu2 {
-    position: relative;
+    /* position: relative;
     top: -3px;
     font-size: 15px;
-    left: 25px;
+    left: 25px; */
 }
 
 .btn:focus,.btn:active {
@@ -184,7 +184,7 @@ span#forkit {
 
 
 input[type="text"] {
-  display:none;
+  /* display:none; */
 }
 
 #results-table th, td{

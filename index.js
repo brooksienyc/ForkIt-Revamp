@@ -1,101 +1,108 @@
 import dotenv from 'dotenv';
-dotenv.config();
-import express, { json, urlencoded} from 'express';
+import express from 'express';
 import axios from 'axios';
-import { fileURLToPath } from 'url';
-import { join } from 'path';
-import logger from 'morgan';
+import bodyParser from 'body-parser';
 import exphbs from 'express-handlebars';
+import { join } from 'path';
+import { fileURLToPath } from 'url';
 
-// establishing the I/O port
+dotenv.config();
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+const API_KEY = process.env.API_KEY;
+console.log(`${API_KEY}`);
+
+// Establishing the I/O port
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 
-const app = express()
-const PORT = process.env.PORT || 3000
+// Configure Handlebars as the view engine
+app.engine('.hbs', exphbs({ extname: '.hbs' }));
+app.set('view engine', '.hbs');
+app.set('views', join(__dirname, 'views')); // Specify the views directory
 
 
-// view engine setup
-app.set('views', join(__dirname, 'views')) // specify that templates will live in the "views" directory
-app.engine('.hbs', exphbs({extname: '.hbs'}))
-app.set('view engine', '.hbs') // specify that we are using "handlebars" as our template engine
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true}));
 
-app.use(logger('dev'))
-app.use(json())
-app.use(urlencoded({ extended: false }))
-app.use(express.static(join(__dirname, 'public'))); // Serve static files
+app.use(express.static(join(__dirname, 'public')));
 
 app.get('/', (req, res, next) => {
   // "render" the template named "home.hbs" in your views folder
-  res.render('home')
+  res.render('home');
 })
 
-app.get('/cuisines', async (req, res, next) => {
-  console.log(req.query)
-  const cityId = req.query.city_id
-  console.log(cityId)
-  const cuisines = await zomatoCuisines(cityId)
-  console.log(cuisines)
-  res.json({cuisines})
-})
-
-app.get('/restaurants', async (req, res, next) => {
-  console.log("******* inside /restaurants")
-  console.log(req.query)
-  const cityId = req.query.city_id
-  const cuisineId = req.query.cuisine_id
-  console.log(cityId)
-  console.log(cuisineId)
-
-  const restaurants = await zomatoRestaurants(cityId, cuisineId)
-  console.log(restaurants)
-  res.json({restaurants})
-})
-
-async function zomatoCuisines(cityId) {
-  console.log("inside zomatoCuisines")
-  const url = 'https://developers.zomato.com/api/v2.1/cuisines'
-  //const apiKey = '[ADD YOUR GIPHY API KEY HERE]'
-  const apiKey = 'a1c6a3aa1b88fda14fbd7bf434a9e7a9'
-
-  // don't forget the "return" keyword in front of axios
+app.post('/typeahead', async (req, res) => {
   try {
-    const response = await axios.get(url, {
-      params: {
-        city_id: cityId,
-      },
-      headers: { 'user-key': `${apiKey}` }
-    });
-    return response.data.cuisines;
+    const cityName = req.body.cityName;
+    const locationId = await worldWideRestaurantsLocation(cityName);
+    res.json({ locationId });
+    console.log(`Location ID: ${locationId}`);
   } catch (error) {
-    console.log(error);
+    console.error(error)
+    res.status(500).send('Error processing request');
+  }
+})
+
+app.post('/search', async (req, res) => {
+  try {
+    const locationId = req.body.locationId;
+    const restaurantData = await worldWideRestaurantsCuisines(locationId);
+    res.json(restaurantData);
+    console.log(`${restaurantData}`);
+  } catch (error) {
+    console.error('Error in /search route:', error);
+    res.status(500).send('Error processing request');
+  }
+})
+
+async function worldWideRestaurantsLocation(cityName) {
+  console.log("inside worldWideRestaurants");
+  const url = 'https://worldwide-restaurants.p.rapidapi.com/typeahead';
+
+  try {
+    const response = await axios.post(url,`q=${encodeURIComponent(cityName)}&language=en_US`, {
+      headers: {
+        'content-type': 'application/x-www-form-urlencoded',
+        'X-RapidAPI-Key': API_KEY,
+        'X-RapidAPI-Host': 'worldwide-restaurants.p.rapidapi.com',
+      }
+    });
+    
+    if (response.data.results && response.data.results.data.length > 0) {
+    const locationId = response.data.results.data[0].result_object.location_id;
+    return locationId;
+    } else {
+      throw new Error('No location data found');
+    }
+  } catch (error) {
+    console.error('Error in worldWideRestaurantsLocation:', error);
+    throw error;
   }
 }
 
-// https://developers.zomato.com/api/v2.1/search?entity_id=280&entity_type=city&count=5&cuisines=641&sort=rating&order=desc
-async function zomatoRestaurants(cityId, cuisineId) {
-  console.log("inside zomatoRestaurants")
-  const url = 'https://developers.zomato.com/api/v2.1/search'
-  //const apiKey = '[ADD YOUR GIPHY API KEY HERE]'
-  const apiKey = 'a1c6a3aa1b88fda14fbd7bf434a9e7a9'
 
-  // don't forget the "return" keyword in front of axios
+async function worldWideRestaurantsCuisines(locationId) {
+  console.log(`Making API call with locationId: ${locationId}`);
+  const url = 'https://worldwide-restaurants.p.rapidapi.com/search';
+
   try {
-    const response = await axios.get(url, {
-      params: {
-        entity_id: cityId,
-        entity_type: "city",
-        count: "5",
-        cuisines: cuisineId,
-        sort: "rating",
-        order: "desc"
-      },
-      headers: { 'user-key': `${apiKey}` }
+    const response = await axios.post(url, `language=en_US&location_id=${encodeURIComponent(locationId)}&currency=USD`, {
+      headers: {
+        'content-type': 'application/x-www-form-urlencoded',
+        'X-RapidAPI-Key': API_KEY,
+        'X-RapidAPI-Host': 'worldwide-restaurants.p.rapidapi.com',
+      }
     });
-    console.log(response.data.restaurants);
-    return response.data.restaurants;
+
+    const restaurantData = response.data.results.data;
+    return restaurantData;
+    console.log(`${restaurantData}`);
   } catch (error) {
-    console.log(error);
+    console.error('Error in worldWideRestarantsCuisines:', error);
+    throw error;
   }
 }
 
-app.listen(PORT, () => console.log(`App is up and running listening on port ${PORT}`))
+
+app.listen(PORT, () => console.log(`Server listening on port: ${PORT}`));
